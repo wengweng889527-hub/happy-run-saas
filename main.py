@@ -24,6 +24,11 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass
+    try:
+        conn.execute(text("ALTER TABLE run_configs ADD COLUMN randomize BOOLEAN DEFAULT 0"))
+        conn.commit()
+    except Exception:
+        pass
 
 # 创建默认管理员
 db = SessionLocal()

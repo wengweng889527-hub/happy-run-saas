@@ -30,6 +30,7 @@ class RunConfigCreate(BaseModel):
     y4: float = 0
     speed: float = 1.0
     loops: int = 1
+    randomize: bool = False  # 随机扰动
 
 
 @router.get("/")
@@ -46,6 +47,7 @@ def get_config(user: User = Depends(get_current_user), db: Session = Depends(get
         "x4": config.x4, "y4": config.y4,
         "speed": config.speed,
         "loops": config.loops,
+        "randomize": config.randomize,
     }
 
 
@@ -64,6 +66,7 @@ def create_config(req: RunConfigCreate, user: User = Depends(get_current_user), 
         x4=req.x4, y4=req.y4,
         speed=req.speed,
         loops=req.loops,
+        randomize=req.randomize,
     )
     db.add(config)
     db.commit()
@@ -84,6 +87,7 @@ def update_config(req: RunConfigCreate, user: User = Depends(get_current_user), 
     config.x4 = req.x4; config.y4 = req.y4
     config.speed = req.speed
     config.loops = req.loops
+    config.randomize = req.randomize
     db.commit()
     return {"message": "配置已更新"}
 
@@ -94,7 +98,25 @@ def download_config(user: User = Depends(get_current_user), db: Session = Depend
     if not config:
         raise HTTPException(status_code=404, detail="配置不存在")
 
-    content = f"{config.x1} {config.y1} {config.x2} {config.y2} {config.x3} {config.y3} {config.x4} {config.y4}\n{config.speed}\n{config.loops}"
+    import random as _rnd
+    def perturb(v):
+        """给坐标加随机 GPS 漂移，范围 ±0.0003 度（约 ±30 米）"""
+        return round(v + _rnd.uniform(-0.0003, 0.0003), 6)
+
+    if config.randomize:
+        x1, y1 = perturb(config.x1), perturb(config.y1)
+        x2, y2 = perturb(config.x2), perturb(config.y2)
+        x3, y3 = perturb(config.x3), perturb(config.y3)
+        x4, y4 = perturb(config.x4), perturb(config.y4)
+        speed = round(config.speed * _rnd.uniform(0.85, 1.15), 1)
+    else:
+        x1, y1 = config.x1, config.y1
+        x2, y2 = config.x2, config.y2
+        x3, y3 = config.x3, config.y3
+        x4, y4 = config.x4, config.y4
+        speed = config.speed
+
+    content = f"{x1} {y1} {x2} {y2} {x3} {y3} {x4} {y4}\n{speed}\n{config.loops}"
     return PlainTextResponse(content, media_type="text/plain", headers={
         "Content-Disposition": "attachment; filename=in.txt"
     })

@@ -158,6 +158,7 @@ async function showUserDetail(userId) {
       <div style="display:flex;gap:16px;color:#94a3b8">
         <div>速度 t: <strong style="color:#e2e8f0">${c.speed}</strong></div>
         <div>圈数 k: <strong style="color:#e2e8f0">${c.loops}</strong></div>
+        <div>${c.randomize ? '🌊 随机扰动' : ''}</div>
       </div>
       <button class="btn btn-download" style="margin-top:12px" onclick="downloadUserConfig(${detail.id},'${detail.username}')">📥 下载 ${detail.username} 的 in.txt</button>
     </div>

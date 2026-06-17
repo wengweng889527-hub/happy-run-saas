@@ -46,6 +46,7 @@ class RunConfig(Base):
     # 速度和循环次数
     speed = Column(Float, default=1.0)  # t: 越大越慢
     loops = Column(Integer, default=1)   # k: 循环圈数
+    randomize = Column(Boolean, default=False)  # 随机扰动：模拟真实GPS漂移
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="configs")
