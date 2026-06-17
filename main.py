@@ -26,7 +26,7 @@ try:
 finally:
     db.close()
 
-app = FastAPI(title="乐跑校园", version="1.0.0")
+app = FastAPI(title="步道乐跑", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -61,7 +61,7 @@ if os.path.exists(STATIC_DIR):
 if __name__ == "__main__":
     public_url = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
     base = f"https://{public_url}" if public_url else f"http://localhost:{SERVER_PORT}"
-    print(f"\n 乐跑校园 v1.0")
+    print(f"\n 步道乐跑 v1.0")
     print(f" 地址: {base}")
     print(f" 管理后台: {base}/admin")
     print(f" 管理员: admin / admin123\n")
