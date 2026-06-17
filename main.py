@@ -11,6 +11,20 @@ from models import User, CardKey, RunConfig
 
 Base.metadata.create_all(bind=engine)
 
+# 数据库迁移：添加新字段
+from sqlalchemy import text
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN app_phone VARCHAR(50)"))
+        conn.commit()
+    except Exception:
+        pass  # 字段已存在
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN app_password VARCHAR(100)"))
+        conn.commit()
+    except Exception:
+        pass
+
 # 创建默认管理员
 db = SessionLocal()
 try:

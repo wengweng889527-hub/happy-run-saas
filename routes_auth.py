@@ -51,11 +51,18 @@ class RegisterRequest(BaseModel):
     card_key: str
     username: str
     password: str
+    app_phone: str = ""       # 步道乐跑app手机号/学号
+    app_password: str = ""    # 步道乐跑app密码
 
 
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+
+class UpdateAccountRequest(BaseModel):
+    app_phone: str = ""
+    app_password: str = ""
 
 
 @router.post("/register")
@@ -81,6 +88,8 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         username=req.username,
         password_hash=bcrypt.hashpw(req.password.encode(), bcrypt.gensalt()).decode(),
         card_key_id=card.id,
+        app_phone=req.app_phone,
+        app_password=req.app_password,
     )
     card.is_used = True
     card.used_by = None  # will be set after flush
@@ -103,3 +112,11 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 
     token = create_token(user.id, user.username, user.is_admin)
     return {"token": token, "username": user.username, "is_admin": user.is_admin}
+
+
+@router.put("/account")
+def update_account(req: UpdateAccountRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user.app_phone = req.app_phone
+    user.app_password = req.app_password
+    db.commit()
+    return {"message": "已更新"}

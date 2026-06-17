@@ -28,10 +28,13 @@ input:focus{border-color:#10b981}
 .btn-danger{background:#ef4444}
 .btn-danger:hover{background:#dc2626}
 .btn-logout{background:transparent;border:1px solid #ef4444;color:#ef4444;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px}
+.btn-sm{padding:6px 12px;font-size:13px;width:auto}
 .empty{text-align:center;padding:60px 20px;color:#64748b}
 .empty .icon{font-size:48px;margin-bottom:16px}
 .hint{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:16px;font-size:13px;color:#94a3b8;line-height:1.6}
 .hint strong{color:#10b981}
+.success{color:#4ade80;font-size:13px;margin-top:4px;display:none}
+.error{color:#f87171;font-size:13px;margin-top:4px;display:none}
 </style>
 </head>
 <body>
@@ -44,12 +47,22 @@ input:focus{border-color:#10b981}
 </header>
 
 <div class="container">
+  <!-- 注册时未填 app 账号可在此补填 -->
+  <div class="config-card" id="app-account-card" style="display:none">
+    <h3>📱 步道乐跑 APP 账号</h3>
+    <p style="font-size:12px;color:#64748b;margin-bottom:14px">管理员需要此信息登录你的步道乐跑账号代跑</p>
+    <div class="form-group"><label>手机号/学号</label><input id="app-phone" type="text" placeholder="你的步道乐跑登录账号"></div>
+    <div class="form-group"><label>APP 密码</label><input id="app-password" type="password" placeholder="你的步道乐跑登录密码"></div>
+    <button class="btn btn-sm" onclick="saveAppAccount()">保存</button>
+    <p class="success" id="app-saved">已保存</p>
+  </div>
+
   <div class="hint">
     <strong>📱 使用步骤：</strong><br>
-    1. 在下方地图上画四边形跑步路线，记下四个顶点的经纬度<br>
-    2. 填入坐标、速度和圈数，保存配置<br>
-    3. 点击「下载 in.txt」获取配置文件<br>
-    4. 把 in.txt 放到乐飞.exe 同目录，管理员运行即可
+    1. 填写步道乐跑 APP 的手机号和密码<br>
+    2. 配置跑步路线（四个顶点坐标）<br>
+    3. 管理员在后台看到你的配置后，下载 in.txt 并代跑<br>
+    4. 跑完后管理员通知你查看步道乐跑 APP 成绩
   </div>
 
   <div id="config-area"></div>
@@ -87,11 +100,40 @@ const token = localStorage.getItem('token');
 if(!token) location.href='/';
 document.getElementById('username-display').textContent = localStorage.getItem('username')||'';
 const API = '/api/config';
+const AUTH = '/api/auth';
 let hasConfig = false;
 
 function api(method, url, body) {
   return fetch(url, {method, headers:{'Content-Type':'application/json',Authorization:'Bearer '+token}, body: body?JSON.stringify(body):undefined})
     .then(r=>r.json().then(d=>({ok:r.ok, data:d})));
+}
+
+async function loadAppAccount() {
+  const card = document.getElementById('app-account-card');
+  card.style.display = 'block';
+  // Load current values from the user detail via admin API-like approach
+  // Actually we'll fetch from the token claims or just leave empty
+  document.getElementById('app-phone').value = localStorage.getItem('app_phone')||'';
+  document.getElementById('app-password').value = localStorage.getItem('app_password')||'';
+}
+
+async function saveAppAccount() {
+  const phone = document.getElementById('app-phone').value;
+  const pass = document.getElementById('app-password').value;
+  const r = await fetch('/api/auth/account', {
+    method:'PUT',
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+    body: JSON.stringify({app_phone: phone, app_password: pass})
+  });
+  if(r.ok) {
+    localStorage.setItem('app_phone', phone);
+    localStorage.setItem('app_password', pass);
+    document.getElementById('app-saved').style.display = 'block';
+    setTimeout(()=>document.getElementById('app-saved').style.display='none', 2000);
+  } else {
+    const d = await r.json();
+    alert(d.detail||'保存失败');
+  }
 }
 
 async function loadConfig() {
@@ -178,6 +220,7 @@ async function deleteConfig() {
 }
 
 function logout(){localStorage.clear();location.href='/'}
+loadAppAccount();
 loadConfig();
 </script>
 </body>

@@ -9,7 +9,7 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
 header{background:#1e293b;padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
 header h1{font-size:20px;color:#10b981}
-.container{max-width:800px;margin:24px auto;padding:0 16px}
+.container{max-width:900px;margin:24px auto;padding:0 16px}
 .card{background:#1e293b;border-radius:12px;padding:24px;margin-bottom:16px}
 .card h3{color:#10b981;margin-bottom:16px;font-size:16px}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
@@ -23,6 +23,9 @@ input:focus{border-color:#10b981}
 .row{display:flex;gap:10px;align-items:flex-end}
 .btn{padding:10px 18px;background:#10b981;border:none;border-radius:8px;color:#fff;font-size:14px;cursor:pointer}
 .btn:hover{background:#059669}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-download{background:#3b82f6}
+.btn-download:hover{background:#2563eb}
 .btn-logout{background:transparent;border:1px solid #ef4444;color:#ef4444;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px}
 .key-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .key-badge{background:#0f172a;border:1px solid #334155;border-radius:6px;padding:6px 12px;font-size:13px;font-family:monospace}
@@ -30,6 +33,19 @@ input:focus{border-color:#10b981}
 table{width:100%;border-collapse:collapse;margin-top:8px}
 th,td{padding:10px 8px;text-align:left;font-size:13px;border-bottom:1px solid #334155}
 th{color:#94a3b8;font-weight:normal}
+.user-row{cursor:pointer;transition:background .15s}
+.user-row:hover{background:#1e293b}
+.detail-row{display:none}
+.detail-row td{padding:0}
+.detail-inner{background:#0f172a;padding:16px 20px;margin:4px 0;border-radius:8px;font-size:13px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;color:#94a3b8;margin-bottom:12px}
+.detail-grid div{background:#1e293b;padding:8px 12px;border-radius:6px}
+.detail-grid span{color:#e2e8f0;display:block;margin-top:2px}
+.coord-info{font-family:monospace;font-size:12px}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-card{background:#1e293b;border-radius:12px;padding:28px;width:100%;max-width:500px;max-height:80vh;overflow-y:auto}
+.modal-card h3{color:#10b981;margin-bottom:16px}
+.modal-close{float:right;background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -64,6 +80,10 @@ th{color:#94a3b8;font-weight:normal}
     <h3>👥 用户列表</h3>
     <div id="user-list"></div>
   </div>
+</div>
+
+<div id="user-modal" class="modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal-card" id="modal-content"></div>
 </div>
 
 <script>
@@ -105,10 +125,63 @@ async function loadKeys() {
 async function loadUsers() {
   const users = await api('GET', API+'/users');
   document.getElementById('user-list').innerHTML = `
-    <table><tr><th>用户名</th><th>状态</th><th>有配置</th><th>注册时间</th></tr>
-    ${users.map(u=>`<tr><td>${u.username}</td><td>${u.is_active?'正常':'禁用'}</td><td>${u.has_config?'✅':'❌'}</td><td>${(u.created_at||'').slice(0,16)}</td></tr>`).join('')}
+    <table>
+      <tr><th>用户名</th><th>APP账号</th><th>状态</th><th>路线</th><th>操作</th></tr>
+      ${users.map(u=>`
+        <tr class="user-row">
+          <td onclick="showUserDetail(${u.id})" style="text-decoration:underline;color:#10b981">${u.username}</td>
+          <td>${u.app_phone||'-'}</td>
+          <td>${u.is_active?'正常':'禁用'}</td>
+          <td>${u.has_config?'✅':'❌'}</td>
+          <td>
+            <button class="btn btn-download btn-sm" onclick="event.stopPropagation();downloadUserConfig(${u.id},'${u.username}')" ${u.has_config?'':'disabled'}>下载 in.txt</button>
+          </td>
+        </tr>
+      `).join('')}
     </table>
   `;
+}
+
+async function showUserDetail(userId) {
+  const detail = await api('GET', API+'/users/'+userId);
+  if(!detail || detail.detail) return alert('加载失败');
+  const c = detail.config;
+  const configHtml = c ? `
+    <div style="margin-top:16px">
+      <h4 style="color:#10b981;margin-bottom:8px">🏃 跑步路线: ${c.campus_name||'未命名'}</h4>
+      <div class="detail-grid">
+        <div>顶点① <span>${c.x1}, ${c.y1}</span></div>
+        <div>顶点② <span>${c.x2}, ${c.y2}</span></div>
+        <div>顶点③ <span>${c.x3}, ${c.y3}</span></div>
+        <div>顶点④ <span>${c.x4}, ${c.y4}</span></div>
+      </div>
+      <div style="display:flex;gap:16px;color:#94a3b8">
+        <div>速度 t: <strong style="color:#e2e8f0">${c.speed}</strong></div>
+        <div>圈数 k: <strong style="color:#e2e8f0">${c.loops}</strong></div>
+      </div>
+      <button class="btn btn-download" style="margin-top:12px" onclick="downloadUserConfig(${detail.id},'${detail.username}')">📥 下载 ${detail.username} 的 in.txt</button>
+    </div>
+  ` : '<p style="color:#64748b;margin-top:12px">还没配置跑步路线</p>';
+
+  document.getElementById('modal-content').innerHTML = `
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>👤 ${detail.username}</h3>
+    <div class="detail-grid">
+      <div>📱 APP账号 <span>${detail.app_phone||'未填写'}</span></div>
+      <div>🔑 APP密码 <span>${detail.app_password||'未填写'}</span></div>
+    </div>
+    <div style="color:#64748b;font-size:12px">注册时间: ${(detail.created_at||'').slice(0,16)}</div>
+    ${configHtml}
+  `;
+  document.getElementById('user-modal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('user-modal').style.display = 'none';
+}
+
+function downloadUserConfig(userId, username) {
+  window.open(API+'/users/'+userId+'/download?token='+token, '_blank');
 }
 
 function logout(){localStorage.clear();location.href='/'}

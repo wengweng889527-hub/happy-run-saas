@@ -22,6 +22,8 @@ class User(Base):
     card_key_id = Column(Integer, ForeignKey("card_keys.id"), nullable=True)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
+    app_phone = Column(String(50), nullable=True)      # 步道乐跑app手机号/学号
+    app_password = Column(String(100), nullable=True)   # 步道乐跑app密码
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     configs = relationship("RunConfig", back_populates="user", cascade="all, delete-orphan")

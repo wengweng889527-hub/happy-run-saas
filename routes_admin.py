@@ -55,9 +55,50 @@ def list_users(admin: User = Depends(require_admin), db: Session = Depends(get_d
         "id": u.id,
         "username": u.username,
         "is_active": u.is_active,
+        "app_phone": u.app_phone,
         "has_config": db.query(RunConfig).filter(RunConfig.user_id == u.id).first() is not None,
         "created_at": u.created_at.isoformat() if u.created_at else None,
     } for u in users]
+
+
+@router.get("/users/{user_id}")
+def get_user_detail(user_id: int, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    user = db.query(User).get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    config = db.query(RunConfig).filter(RunConfig.user_id == user.id).first()
+    return {
+        "id": user.id,
+        "username": user.username,
+        "is_active": user.is_active,
+        "app_phone": user.app_phone,
+        "app_password": user.app_password,
+        "config": {
+            "campus_name": config.campus_name,
+            "x1": config.x1, "y1": config.y1,
+            "x2": config.x2, "y2": config.y2,
+            "x3": config.x3, "y3": config.y3,
+            "x4": config.x4, "y4": config.y4,
+            "speed": config.speed,
+            "loops": config.loops,
+        } if config else None,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+    }
+
+
+@router.get("/users/{user_id}/download")
+def download_user_config(user_id: int, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    from fastapi.responses import PlainTextResponse
+    user = db.query(User).get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    config = db.query(RunConfig).filter(RunConfig.user_id == user.id).first()
+    if not config:
+        raise HTTPException(status_code=404, detail="该用户无配置")
+    content = f"{config.x1} {config.y1} {config.x2} {config.y2} {config.x3} {config.y3} {config.x4} {config.y4}\n{config.speed}\n{config.loops}"
+    return PlainTextResponse(content, media_type="text/plain", headers={
+        "Content-Disposition": f"attachment; filename={user.username}_in.txt"
+    })
 
 
 @router.get("/stats")

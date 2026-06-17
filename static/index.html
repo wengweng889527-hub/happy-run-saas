@@ -7,7 +7,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center}
-.card{background:#1e293b;border-radius:16px;padding:32px;width:100%;max-width:420px;box-shadow:0 25px 50px rgba(0,0,0,.4)}
+.card{background:#1e293b;border-radius:16px;padding:32px;width:100%;max-width:460px;box-shadow:0 25px 50px rgba(0,0,0,.4)}
 h1{text-align:center;font-size:24px;margin-bottom:8px;color:#f1f5f9}
 .subtitle{text-align:center;color:#94a3b8;font-size:14px;margin-bottom:28px}
 .tabs{display:flex;gap:8px;margin-bottom:24px}
@@ -23,6 +23,7 @@ input:focus{border-color:#10b981}
 .success{color:#4ade80;font-size:13px;margin-top:8px;text-align:center;display:none}
 .form-section{display:none}
 .form-section.active{display:block}
+.optional{font-size:11px;color:#64748b;margin-left:4px}
 </style>
 </head>
 <body>
@@ -46,6 +47,8 @@ input:focus{border-color:#10b981}
     <div class="form-group"><label>卡密</label><input id="reg-key" type="text" placeholder="输入你的卡密"></div>
     <div class="form-group"><label>设置用户名</label><input id="reg-user" type="text" placeholder="至少3位"></div>
     <div class="form-group"><label>设置密码</label><input id="reg-pass" type="password" placeholder="至少6位"></div>
+    <div class="form-group"><label>步道乐跑 APP 手机号/学号</label><input id="reg-phone" type="text" placeholder="你的步道乐跑登录账号"></div>
+    <div class="form-group"><label>步道乐跑 APP 密码</label><input id="reg-app-pass" type="password" placeholder="你的步道乐跑登录密码"></div>
     <button class="btn" onclick="doRegister()">激活并注册</button>
     <p id="reg-error" class="error"></p>
     <p id="reg-ok" class="success"></p>
@@ -86,7 +89,9 @@ async function doRegister() {
     const d = await api(API+'/register', {
       card_key: document.getElementById('reg-key').value,
       username: document.getElementById('reg-user').value,
-      password: document.getElementById('reg-pass').value
+      password: document.getElementById('reg-pass').value,
+      app_phone: document.getElementById('reg-phone').value,
+      app_password: document.getElementById('reg-app-pass').value,
     });
     localStorage.setItem('token', d.token);
     localStorage.setItem('username', d.username);
