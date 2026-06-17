@@ -9,5 +9,5 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
-SERVER_PORT = int(os.getenv("SERVER_PORT", "9002"))
+SERVER_PORT = int(os.getenv("PORT", os.getenv("SERVER_PORT", "9002")))
 SECRET_KEY = os.getenv("SECRET_KEY", "happy-run-secret-key-2026")
