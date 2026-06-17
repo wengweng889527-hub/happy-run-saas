@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>乐跑校园 - 路线配置</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+header{background:#1e293b;padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:20px;color:#10b981}
+.user{color:#94a3b8;font-size:14px}
+.container{max-width:600px;margin:24px auto;padding:0 16px}
+.config-card{background:#1e293b;border-radius:12px;padding:24px;margin-bottom:16px}
+.config-card h3{color:#10b981;margin-bottom:16px}
+.form-group{margin-bottom:14px}
+label{display:block;font-size:13px;color:#94a3b8;margin-bottom:6px}
+input{width:100%;padding:10px 14px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;outline:none}
+input:focus{border-color:#10b981}
+.coord-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.coord-label{font-size:11px;color:#64748b}
+.btn{width:100%;padding:12px;background:#10b981;border:none;border-radius:8px;color:#fff;font-size:15px;cursor:pointer;margin-top:8px}
+.btn:hover{background:#059669}
+.btn-outline{background:transparent;border:1px solid #334155;color:#94a3b8}
+.btn-outline:hover{background:#1e293b;color:#fff}
+.btn-download{background:#3b82f6}
+.btn-download:hover{background:#2563eb}
+.btn-danger{background:#ef4444}
+.btn-danger:hover{background:#dc2626}
+.btn-logout{background:transparent;border:1px solid #ef4444;color:#ef4444;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px}
+.empty{text-align:center;padding:60px 20px;color:#64748b}
+.empty .icon{font-size:48px;margin-bottom:16px}
+.hint{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:16px;font-size:13px;color:#94a3b8;line-height:1.6}
+.hint strong{color:#10b981}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏃 乐跑校园</h1>
+  <div>
+    <span class="user" id="username-display"></span>
+    <button class="btn-logout" onclick="logout()">退出</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="hint">
+    <strong>📱 使用步骤：</strong><br>
+    1. 在下方地图上画四边形跑步路线，记下四个顶点的经纬度<br>
+    2. 填入坐标、速度和圈数，保存配置<br>
+    3. 点击「下载 in.txt」获取配置文件<br>
+    4. 把 in.txt 放到乐飞.exe 同目录，管理员运行即可
+  </div>
+
+  <div id="config-area"></div>
+  <div class="empty" id="empty">
+    <div class="icon">🏃</div>
+    <p>还没有跑步配置</p>
+  </div>
+
+  <button class="btn" id="add-btn" onclick="showForm()">+ 创建跑步路线</button>
+  <div class="config-card" id="form-card" style="display:none">
+    <div class="form-group"><label>校区名称（备注）</label><input id="f-campus" placeholder="如：郑东校区"></div>
+    <div class="coord-row">
+      <div><div class="coord-label">顶点① 经度</div><input id="f-x1" type="number" step="any" placeholder="如 113.408969"></div>
+      <div><div class="coord-label">顶点① 纬度</div><input id="f-y1" type="number" step="any" placeholder="如 23.053502"></div>
+      <div><div class="coord-label">顶点② 经度</div><input id="f-x2" type="number" step="any" placeholder="如 113.409035"></div>
+      <div><div class="coord-label">顶点② 纬度</div><input id="f-y2" type="number" step="any" placeholder="如 23.053502"></div>
+      <div><div class="coord-label">顶点③ 经度</div><input id="f-x3" type="number" step="any" placeholder="如 113.409035"></div>
+      <div><div class="coord-label">顶点③ 纬度</div><input id="f-y3" type="number" step="any" placeholder="如 23.054444"></div>
+      <div><div class="coord-label">顶点④ 经度</div><input id="f-x4" type="number" step="any" placeholder="如 113.408969"></div>
+      <div><div class="coord-label">顶点④ 纬度</div><input id="f-y4" type="number" step="any" placeholder="如 23.054444"></div>
+    </div>
+    <div class="coord-row" style="margin-top:10px">
+      <div class="form-group"><label>速度 t (越大越慢)</label><input id="f-speed" type="number" value="1" step="0.1" min="0.5"></div>
+      <div class="form-group"><label>循环圈数 k</label><input id="f-loops" type="number" value="1" min="1"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" id="form-submit" onclick="saveConfig()">保存</button>
+      <button class="btn btn-outline" onclick="hideForm()">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+if(!token) location.href='/';
+document.getElementById('username-display').textContent = localStorage.getItem('username')||'';
+const API = '/api/config';
+let hasConfig = false;
+
+function api(method, url, body) {
+  return fetch(url, {method, headers:{'Content-Type':'application/json',Authorization:'Bearer '+token}, body: body?JSON.stringify(body):undefined})
+    .then(r=>r.json().then(d=>({ok:r.ok, data:d})));
+}
+
+async function loadConfig() {
+  const r = await api('GET', API+'/');
+  const c = r.ok ? r.data : null;
+  const empty = document.getElementById('empty');
+  const addBtn = document.getElementById('add-btn');
+  const area = document.getElementById('config-area');
+  const form = document.getElementById('form-card');
+
+  if(!c) {
+    empty.style.display='block';
+    addBtn.style.display='block';
+    area.innerHTML='';
+    hasConfig=false;
+    return;
+  }
+  hasConfig=true;
+  empty.style.display='none';
+  addBtn.style.display='none';
+  form.style.display='none';
+  area.innerHTML = `
+    <div class="config-card">
+      <h3>📍 ${c.campus_name||'未命名路线'}</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;color:#94a3b8;margin-bottom:16px">
+        <div>① ${c.x1}, ${c.y1}</div><div>② ${c.x2}, ${c.y2}</div>
+        <div>③ ${c.x3}, ${c.y3}</div><div>④ ${c.x4}, ${c.y4}</div>
+      </div>
+      <div style="font-size:13px;color:#94a3b8;margin-bottom:16px">速度: ${c.speed} | 圈数: ${c.loops}</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="editConfig()" style="flex:1">✏️ 编辑</button>
+        <button class="btn btn-download" onclick="downloadConfig()" style="flex:1">📥 下载 in.txt</button>
+        <button class="btn btn-danger" onclick="deleteConfig()" style="flex:1">🗑 删除</button>
+      </div>
+    </div>
+  `;
+}
+
+function editConfig() {
+  showForm();
+  api('GET', API+'/').then(r=>{
+    if(!r.ok) return;
+    const c=r.data;
+    document.getElementById('f-campus').value=c.campus_name||'';
+    ['x1','y1','x2','y2','x3','y3','x4','y4'].forEach(k=>document.getElementById('f-'+k).value=c[k]||0);
+    document.getElementById('f-speed').value=c.speed||1;
+    document.getElementById('f-loops').value=c.loops||1;
+    document.getElementById('form-submit').textContent='更新';
+  });
+}
+
+function showForm() {
+  document.getElementById('form-card').style.display='block';
+  document.getElementById('form-submit').textContent='保存';
+}
+
+function hideForm() {
+  document.getElementById('form-card').style.display='none';
+}
+
+async function saveConfig() {
+  const g=(id)=>document.getElementById(id).value;
+  const body = {
+    campus_name: g('f-campus'),
+    x1: parseFloat(g('f-x1')), y1: parseFloat(g('f-y1')),
+    x2: parseFloat(g('f-x2')), y2: parseFloat(g('f-y2')),
+    x3: parseFloat(g('f-x3')), y3: parseFloat(g('f-y3')),
+    x4: parseFloat(g('f-x4')), y4: parseFloat(g('f-y4')),
+    speed: parseFloat(g('f-speed')), loops: parseInt(g('f-loops')),
+  };
+  const method = hasConfig ? 'PUT' : 'POST';
+  const r = await api(method, API+'/', body);
+  if(r.ok){hideForm();loadConfig()}else{alert(r.data.detail||'保存失败')}
+}
+
+function downloadConfig() {
+  window.open(API+'/download?token='+token, '_blank');
+}
+
+async function deleteConfig() {
+  if(!confirm('确定删除？')) return;
+  await fetch(API+'/', {method:'DELETE',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token}});
+  loadConfig();
+}
+
+function logout(){localStorage.clear();location.href='/'}
+loadConfig();
+</script>
+</body>
+</html>

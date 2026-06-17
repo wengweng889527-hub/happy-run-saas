@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>乐跑校园 - 管理后台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+header{background:#1e293b;padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:20px;color:#10b981}
+.container{max-width:800px;margin:24px auto;padding:0 16px}
+.card{background:#1e293b;border-radius:12px;padding:24px;margin-bottom:16px}
+.card h3{color:#10b981;margin-bottom:16px;font-size:16px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat{background:#0f172a;border-radius:8px;padding:16px;text-align:center}
+.stat .num{font-size:28px;font-weight:bold;color:#10b981}
+.stat .label{font-size:12px;color:#94a3b8;margin-top:4px}
+.form-group{margin-bottom:12px}
+label{display:block;font-size:13px;color:#94a3b8;margin-bottom:6px}
+input{width:100%;padding:10px 14px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;outline:none}
+input:focus{border-color:#10b981}
+.row{display:flex;gap:10px;align-items:flex-end}
+.btn{padding:10px 18px;background:#10b981;border:none;border-radius:8px;color:#fff;font-size:14px;cursor:pointer}
+.btn:hover{background:#059669}
+.btn-logout{background:transparent;border:1px solid #ef4444;color:#ef4444;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px}
+.key-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.key-badge{background:#0f172a;border:1px solid #334155;border-radius:6px;padding:6px 12px;font-size:13px;font-family:monospace}
+.key-badge.used{opacity:.4;text-decoration:line-through}
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{padding:10px 8px;text-align:left;font-size:13px;border-bottom:1px solid #334155}
+th{color:#94a3b8;font-weight:normal}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏃 乐跑校园 · 管理后台</h1>
+  <div>
+    <button class="btn-logout" onclick="logout()">退出</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="card">
+    <h3>📊 数据概览</h3>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="card">
+    <h3>🔑 生成卡密</h3>
+    <div class="row">
+      <div class="form-group" style="flex:1"><input id="gen-count" type="number" value="5" min="1" max="100"></div>
+      <button class="btn" onclick="genKeys()">生成卡密</button>
+    </div>
+    <div class="key-list" id="new-keys"></div>
+  </div>
+
+  <div class="card">
+    <h3>📋 卡密列表</h3>
+    <div id="key-list"></div>
+  </div>
+
+  <div class="card">
+    <h3>👥 用户列表</h3>
+    <div id="user-list"></div>
+  </div>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+if(!token || localStorage.getItem('is_admin')!=='true') location.href='/';
+const API = '/api/admin';
+
+function api(method, url, body) {
+  return fetch(url, {method, headers:{'Content-Type':'application/json',Authorization:'Bearer '+token}, body: body?JSON.stringify(body):undefined})
+    .then(r=>r.json());
+}
+
+async function loadStats() {
+  const s = await api('GET', API+'/stats');
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="num">${s.total_users}</div><div class="label">注册用户</div></div>
+    <div class="stat"><div class="num">${s.total_keys}</div><div class="label">总卡密</div></div>
+    <div class="stat"><div class="num">${s.used_keys}</div><div class="label">已使用</div></div>
+    <div class="stat"><div class="num">${s.total_configs}</div><div class="label">路线配置</div></div>
+  `;
+}
+
+async function genKeys() {
+  const n = document.getElementById('gen-count').value;
+  const r = await api('POST', API+'/keys', {count: parseInt(n)});
+  document.getElementById('new-keys').innerHTML = r.keys.map(k=>`<span class="key-badge">${k}</span>`).join('');
+  loadStats(); loadKeys();
+}
+
+async function loadKeys() {
+  const keys = await api('GET', API+'/keys');
+  document.getElementById('key-list').innerHTML = `
+    <table><tr><th>卡密</th><th>状态</th><th>创建时间</th></tr>
+    ${keys.map(k=>`<tr><td><span class="key-badge ${k.is_used?'used':''}">${k.key}</span></td><td>${k.is_used?'已使用':'未使用'}</td><td>${(k.created_at||'').slice(0,16)}</td></tr>`).join('')}
+    </table>
+  `;
+}
+
+async function loadUsers() {
+  const users = await api('GET', API+'/users');
+  document.getElementById('user-list').innerHTML = `
+    <table><tr><th>用户名</th><th>状态</th><th>有配置</th><th>注册时间</th></tr>
+    ${users.map(u=>`<tr><td>${u.username}</td><td>${u.is_active?'正常':'禁用'}</td><td>${u.has_config?'✅':'❌'}</td><td>${(u.created_at||'').slice(0,16)}</td></tr>`).join('')}
+    </table>
+  `;
+}
+
+function logout(){localStorage.clear();location.href='/'}
+loadStats(); loadKeys(); loadUsers();
+</script>
+</body>
+</html>
